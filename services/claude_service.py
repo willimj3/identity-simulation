@@ -6,8 +6,14 @@ Uses the Anthropic SDK to call Claude with persona-specific system prompts.
 import os
 import json
 import asyncio
+from pathlib import Path
+from dotenv import load_dotenv
 from anthropic import Anthropic
 from typing import Optional
+
+# Load environment variables from .env file
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(env_path)
 
 # Initialize client
 client = Anthropic()

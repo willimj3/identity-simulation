@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from contextlib import asynccontextmanager
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,6 +17,7 @@ from schemas import SimulationRequest, SimulationResponse, SimulationSummary, Pe
 from personas import PERSONAS
 from services.claude_service import generate_all_persona_responses
 from services.export_service import generate_csv, generate_pdf
+from services.file_service import extract_text_from_file, MAX_FILE_SIZE, SUPPORTED_EXTENSIONS
 
 # Static files directory (built frontend)
 STATIC_DIR = Path(__file__).parent / "static"
@@ -190,6 +191,55 @@ async def export_simulation(simulation_id: int, format: str = "csv"):
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "version": "1.0.0"}
+
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """
+    Upload a document and extract its text content.
+    Supports .txt, .pdf, and .docx files.
+    Returns the extracted text for use in simulation.
+    """
+    # Validate file extension
+    filename = file.filename or "unknown"
+    suffix = Path(filename).suffix.lower()
+
+    if suffix not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {suffix}. Supported: .txt, .pdf, .docx"
+        )
+
+    # Read file content
+    content = await file.read()
+
+    # Validate file size
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB"
+        )
+
+    # Extract text
+    try:
+        extracted_text = extract_text_from_file(content, filename)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to extract text from file: {str(e)}"
+        )
+
+    # Truncate if too long (Claude has context limits)
+    max_chars = 50000
+    if len(extracted_text) > max_chars:
+        extracted_text = extracted_text[:max_chars] + "\n\n[Document truncated due to length...]"
+
+    return {
+        "filename": filename,
+        "file_type": suffix,
+        "char_count": len(extracted_text),
+        "extracted_text": extracted_text
+    }
 
 
 # Serve static files (built React frontend) if the directory exists
