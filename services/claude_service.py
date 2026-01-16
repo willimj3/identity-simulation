@@ -83,8 +83,8 @@ async def generate_persona_response(
 
     try:
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2000,
+            model="claude-opus-4-20250514",
+            max_tokens=2500,
             system=system_prompt,
             messages=[
                 {"role": "user", "content": user_prompt}
