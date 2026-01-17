@@ -48,7 +48,7 @@ Your entire response should be parseable JSON matching this exact structure:
 def build_user_prompt(message: str, context_type: str) -> str:
     """Build the user prompt with the message to analyze."""
     context_descriptions = {
-        "tweet": "a tweet or social media post",
+        "tweet": "a social media post",
         "policy_brief": "a policy brief or white paper excerpt",
         "speech": "a speech or public address",
         "news_article": "a news article or headline",
